@@ -1,22 +1,20 @@
 var physics_accuracy  = 3,
+	tear_distance     = 100,
 	mouse_influence   = 20,
 	mouse_cut         = 5,
 	gravity           = 1200,
-	cloth_height      = 60,
-	cloth_width       = 120,
-	start_y           = 20,
 	spacing           = 7,
-	tear_distance     = 100;
+	cloth_height      = null,
+	cloth_width       = null,
+	start_x           = null,
+	start_y           = null;
 
-window.requestAnimFrame =
-	window.requestAnimationFrame ||
-	window.webkitRequestAnimationFrame ||
-	window.mozRequestAnimationFrame ||
-	window.oRequestAnimationFrame ||
-	window.msRequestAnimationFrame ||
-	function (callback) {
-		window.setTimeout(callback, 1000 / 60);
-};
+window.requestAnimFrame = window.requestAnimationFrame
+                       || window.webkitRequestAnimationFrame
+					   || window.mozRequestAnimationFrame
+					   || window.oRequestAnimationFrame
+					   || window.msRequestAnimationFrame
+					   || function (callback) { window.setTimeout(callback, 1000 / 60); };
 
 var canvas,
 	ctx,
@@ -140,7 +138,12 @@ Constraint.prototype.resolve = function () {
 		dist    = Math.sqrt(diff_x * diff_x + diff_y * diff_y),
 		diff    = (this.length - dist) / dist;
 
-	if (dist > tear_distance) this.p1.remove_constraint(this);
+	if (dist > tear_distance) {
+		var end_x = start_x + cloth_width * spacing;
+		/* Fix a bug: right bound of the cloth is too delicate */
+		if (this.p2.x == end_x) console.log("fuck!");
+		else this.p1.remove_constraint(this);
+	}
 
 	var px = diff_x * diff * 0.5;
 	var py = diff_y * diff * 0.5;
@@ -160,8 +163,6 @@ Constraint.prototype.draw = function () {
 var Cloth = function () {
 
 	this.points = [];
-
-	var start_x = canvas.width / 2 - cloth_width * spacing / 2;
 
 	for (var y = 0; y <= cloth_height; y++) {
 
@@ -213,7 +214,7 @@ function update() {
 
 function start() {
 
-	canvas.onmousedown = function (e) {
+	canvas.addEventListener("mousedown", function(e) {
 		mouse.button  = e.which;
 		mouse.px      = mouse.x;
 		mouse.py      = mouse.y;
@@ -222,31 +223,59 @@ function start() {
 		mouse.y       = e.clientY - rect.top,
 		mouse.down    = true;
 		e.preventDefault();
-	};
+	});
 
-	canvas.onmouseup = function (e) {
-		mouse.down = false;
-		e.preventDefault();
-	};
-
-	canvas.onmousemove = function (e) {
+	canvas.addEventListener("mousemove", function(e) {
 		mouse.px  = mouse.x;
 		mouse.py  = mouse.y;
 		var rect  = canvas.getBoundingClientRect();
 		mouse.x   = e.clientX - rect.left,
 		mouse.y   = e.clientY - rect.top,
 		e.preventDefault();
-	};
+	});
 
-	canvas.oncontextmenu = function (e) {
+	canvas.addEventListener("mouseup", function(e) {
+		mouse.down = false;
 		e.preventDefault();
-	};
+	});
+
+	canvas.addEventListener("touchstart", function(e) {
+		mouse.button  = 1;
+		mouse.px      = mouse.x;
+		mouse.py      = mouse.y;
+		var rect      = canvas.getBoundingClientRect();
+		mouse.x       = e.touches[0].clientX - rect.left,
+		mouse.y       = e.touches[0].clientY - rect.top,
+		mouse.down    = true;
+		e.preventDefault();
+	});
+
+	canvas.addEventListener("touchmove", function(e) {
+		mouse.px  = mouse.x;
+		mouse.py  = mouse.y;
+		var rect  = canvas.getBoundingClientRect();
+		mouse.x   = e.touches[0].clientX - rect.left,
+		mouse.y   = e.touches[0].clientY - rect.top,
+		e.preventDefault();
+	});
+
+	canvas.addEventListener("touchend", function(e) {
+		mouse.down = false;
+		e.preventDefault();
+	});
+
+	canvas.addEventListener("contextmenu", function(e) {
+		e.preventDefault();
+	});
 
 	boundsx = canvas.width - 1;
 	boundsy = canvas.height - 1;
-
+	cloth_width = Math.floor(canvas.width * .1);
+	cloth_height = Math.floor(canvas.height * .08);
+	start_x = canvas.width / 2 - cloth_width * spacing / 2;
+	start_y = canvas.height * .01;
 	ctx.strokeStyle = "#98f";
-  
+
 	cloth = new Cloth();
   
 	update();
